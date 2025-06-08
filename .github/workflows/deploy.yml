@@ -1,0 +1,40 @@
+name: Deploy App
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Add server to known_hosts
+        run: |
+          set -x
+          mkdir -p $HOME/.ssh
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> $HOME/.ssh/known_hosts
+          chmod 644 $HOME/.ssh/known_hosts
+
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+
+      - name: Install community.docker collection
+        run: |
+          ansible-galaxy collection install community.docker
+
+      - name: Run Ansible playbook
+        run: |
+          ansible-playbook -i ansible/inventory.ini ansible/playbook.yml

@@ -1,0 +1,7 @@
+{
+    "name": "frontend",
+    "version": "1.0.0",
+    "scripts": {
+      "start": "echo Frontend działa! && tail -f /dev/null"
+    }
+  }

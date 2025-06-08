@@ -1,0 +1,78 @@
+- name: Deploy application
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+        update_cache: yes
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: latest
+
+    - name: Download Docker Compose binary
+      ansible.builtin.shell: |
+        curl -L "https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+      args:
+        executable: /bin/bash
+
+    - name: Make Docker Compose executable
+      ansible.builtin.file:
+        path: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Create application directory
+      file:
+        path: /home/{{ ansible_user }}/app
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: ../docker-compose.yml
+        dest: /home/{{ ansible_user }}/app/docker-compose.yml
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Copy frontend files (with Dockerfile)
+      copy:
+        src: ../frontend
+        dest: /home/{{ ansible_user }}/app
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Copy backend files (with Dockerfile)
+      copy:
+        src: ../backend
+        dest: /home/{{ ansible_user }}/app
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Build and start containers with Docker Compose v2
+      community.docker.docker_compose_v2:
+        project_src: /home/{{ ansible_user }}/app
+        state: present
